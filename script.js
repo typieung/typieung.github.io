@@ -62,11 +62,12 @@ function buildSubTabs() {
 buildSubTabs();
 
 // ── Works overlay state ───────────────────────────────────────────────────────
-const worksBtn      = document.getElementById('works-btn');
-const worksOverlay  = document.getElementById('works-overlay');
-const worksList     = document.getElementById('works-list');
-const worksDetail   = document.getElementById('works-detail');
-const worksHoverImg = document.getElementById('works-hover-img');
+const worksBtn        = document.getElementById('works-btn');
+const worksOverlay    = document.getElementById('works-overlay');
+const worksList       = document.getElementById('works-list');
+const worksDetail     = document.getElementById('works-detail');
+const worksHoverImg   = document.getElementById('works-hover-img');
+const worksMobileGrid = document.getElementById('works-mobile-grid');
 
 let state = {
   open:     false,
@@ -180,8 +181,18 @@ function filteredProjects() {
   });
 }
 
+function renderMobileGrid(projects) {
+  worksMobileGrid.innerHTML = '';
+  projects.forEach(p => {
+    worksMobileGrid.appendChild(createCard(p, 0));
+  });
+}
+
 function renderList() {
   const projects = filteredProjects();
+
+  renderMobileGrid(projects);
+
   worksList.innerHTML = projects.map(p => `
     <li class="works-item${state.selected === p.id ? ' selected' : ''}" data-id="${p.id}">
       ${p.name}
@@ -245,6 +256,7 @@ const heroLogoGroup = document.getElementById('hero-logo-group');
 const heroLogo      = document.getElementById('hero-logo');
 const NAV_HEIGHT    = 48;
 const NAV_FONT_SIZE = 15;
+const HERO_VH       = 0.60; // CSS .hero height와 일치
 
 function easeOut(t) { return 1 - Math.pow(1 - t, 2); }
 
@@ -257,7 +269,9 @@ function updateLogo() {
   const SCROLL_END = window.innerHeight * 0.6;
   const t = state.open ? 1 : easeOut(Math.min(window.scrollY / SCROLL_END, 1));
 
-  const currentY = window.innerHeight / 2 + (NAV_HEIGHT / 2 - window.innerHeight / 2) * t;
+  // hero 영역(NAV_HEIGHT ~ HERO_VH*vh)의 중앙에서 시작 → nav 중앙으로 이동
+  const heroCenter = NAV_HEIGHT + (window.innerHeight * HERO_VH - NAV_HEIGHT) / 2;
+  const currentY   = heroCenter + (NAV_HEIGHT / 2 - heroCenter) * t;
   const scale    = 1 + (NAV_FONT_SIZE / heroFontSize - 1) * t;
 
   heroLogoGroup.style.top       = `${currentY}px`;
@@ -330,11 +344,11 @@ function createCard(project, delay) {
   article.className = 'proj-card';
   article.style.transitionDelay = `${delay}s`;
   article.innerHTML = `
-    <div class="proj-img"><img src="${project.image}" alt="${project.name}"></div>
     <div class="proj-info">
       <p class="proj-subject">${project.name}</p>
       <p class="proj-desc">${project.description}</p>
     </div>
+    <div class="proj-img"><img src="${project.image}" alt="${project.name}"></div>
   `;
   return article;
 }
