@@ -61,6 +61,61 @@ function buildSubTabs() {
 
 buildSubTabs();
 
+// ── Contact popup ────────────────────────────────────────────────────────────
+const contactBtn      = document.getElementById('contact-btn');
+const contactPopup    = document.getElementById('contact-popup');
+const contactBackdrop = document.getElementById('contact-backdrop');
+const contactHand     = document.getElementById('contact-hand');
+
+function playHandAnimation() {
+  contactHand.style.animation = 'none';
+  contactHand.offsetHeight; // reflow
+  contactHand.style.animation = 'hand-push 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+}
+
+contactBtn.addEventListener('click', e => {
+  e.preventDefault();
+  contactPopup.classList.add('open');
+  contactBtn.classList.add('active');
+  heroCursorTip.classList.remove('visible');
+  playHandAnimation();
+});
+
+function closeContact() {
+  contactHand.style.animation = 'none';
+  contactHand.offsetHeight;
+  contactHand.style.animation = 'hand-retrieve 0.85s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+  setTimeout(() => {
+    contactPopup.classList.remove('open');
+    contactBtn.classList.remove('active');
+  }, 300);
+}
+
+contactBackdrop.addEventListener('click', closeContact);
+
+// ── About overlay ────────────────────────────────────────────────────────────
+const aboutBtn     = document.getElementById('about-btn');
+const aboutOverlay = document.getElementById('about-overlay');
+let aboutOpen = false;
+
+
+function setAboutOverlay(open) {
+  aboutOpen = open;
+  aboutOverlay.classList.toggle('open', open);
+  aboutBtn.classList.toggle('active', open);
+  document.body.style.overflow = open ? 'hidden' : '';
+
+  heroLogoGroup.classList.add('transitioning');
+  updateLogo();
+  setTimeout(() => heroLogoGroup.classList.remove('transitioning'), 400);
+}
+
+aboutBtn.addEventListener('click', e => {
+  e.preventDefault();
+  if (state.open) setOverlay(false);
+  setAboutOverlay(!aboutOpen);
+});
+
 // ── Works overlay state ───────────────────────────────────────────────────────
 const worksBtn        = document.getElementById('works-btn');
 const worksOverlay    = document.getElementById('works-overlay');
@@ -78,26 +133,57 @@ let state = {
 };
 
 // ── Toggle Works overlay ──────────────────────────────────────────────────────
+function resetWorksState() {
+  state.cat = null;
+  state.type = 'all';
+  state.year = 'all';
+  state.selected = null;
+
+  document.querySelectorAll('.wtab').forEach(b => b.classList.remove('active'));
+  rowType.querySelectorAll('.wtab2').forEach(b => b.classList.remove('active'));
+  rowYear.querySelectorAll('.wtab3').forEach(b => b.classList.remove('active'));
+  rowType.classList.add('hidden');
+  rowYear.classList.add('hidden');
+
+  worksList.innerHTML = '';
+  worksMobileGrid.innerHTML = '';
+  worksDetail.classList.remove('visible');
+  worksDetail.innerHTML = '';
+  worksHoverImg.classList.remove('visible');
+  worksHoverImg.src = '';
+}
+
 function setOverlay(open) {
   state.open = open;
   worksOverlay.classList.toggle('open', open);
   worksBtn.classList.toggle('active', open);
   document.body.style.overflow = open ? 'hidden' : '';
 
+  if (open && aboutOpen) setAboutOverlay(false);
+
   heroLogoGroup.classList.add('transitioning');
   updateLogo();
   setTimeout(() => heroLogoGroup.classList.remove('transitioning'), 400);
 
-  if (open) renderList();
+  if (open) { resetWorksState(); renderList(); }
 }
 
 worksBtn.addEventListener('click', e => {
   e.preventDefault();
-  setOverlay(!state.open);
+  if (state.open) {
+    resetWorksState();
+    renderList();
+  } else {
+    setOverlay(true);
+  }
 });
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && state.open) setOverlay(false);
+  if (e.key === 'Escape') {
+    if (state.open) setOverlay(false);
+    if (aboutOpen) setAboutOverlay(false);
+    closeContact();
+  }
 });
 
 // ── Category tabs ─────────────────────────────────────────────────────────────
@@ -209,6 +295,9 @@ function renderList() {
       } else {
         worksHoverImg.classList.remove('visible');
       }
+      if (state.selected && state.selected !== project.id) {
+        worksDetail.classList.remove('visible');
+      }
     });
 
     li.addEventListener('mouseleave', () => {
@@ -218,6 +307,9 @@ function renderList() {
         worksHoverImg.classList.add('visible');
       } else {
         worksHoverImg.classList.remove('visible');
+      }
+      if (sel) {
+        worksDetail.classList.add('visible');
       }
     });
 
@@ -232,6 +324,19 @@ function renderList() {
       }
     });
   });
+
+  // Auto-select first project if nothing is selected
+  if (!state.selected && projects.length > 0) {
+    const first = projects[0];
+    state.selected = first.id;
+    const firstLi = worksList.querySelector('.works-item');
+    if (firstLi) firstLi.classList.add('selected');
+    showDetail(first);
+    if (first.image) {
+      worksHoverImg.src = first.image;
+      worksHoverImg.classList.add('visible');
+    }
+  }
 }
 
 function showDetail(project) {
@@ -252,11 +357,12 @@ function clearSelection() {
 }
 
 // ── Logo: shrinks and moves up to nav center on scroll ───────────────────────
-const heroLogoGroup = document.getElementById('hero-logo-group');
-const heroLogo      = document.getElementById('hero-logo');
+const heroLogoGroup  = document.getElementById('hero-logo-group');
+const heroLogo       = document.getElementById('hero-logo');
+const heroCursorTip  = document.getElementById('hero-cursor-tip');
 const NAV_HEIGHT    = 48;
-const NAV_FONT_SIZE = 15;
-const HERO_VH       = 0.60; // CSS .hero height와 일치
+const NAV_FONT_SIZE = 20;
+const HERO_VH       = 0.20; // CSS .hero height와 일치
 
 function easeOut(t) { return 1 - Math.pow(1 - t, 2); }
 
@@ -267,18 +373,19 @@ function updateLogo() {
   if (!heroFontSize) heroFontSize = parseFloat(getComputedStyle(heroLogo).fontSize);
 
   const SCROLL_END = window.innerHeight * 0.6;
-  const t = state.open ? 1 : easeOut(Math.min(window.scrollY / SCROLL_END, 1));
+  const t = (state.open || aboutOpen) ? 1 : easeOut(Math.min(window.scrollY / SCROLL_END, 1));
 
-  // hero 영역(NAV_HEIGHT ~ HERO_VH*vh)의 중앙에서 시작 → nav 중앙으로 이동
-  const heroCenter = NAV_HEIGHT + (window.innerHeight * HERO_VH - NAV_HEIGHT) / 2;
-  const currentY   = heroCenter + (NAV_HEIGHT / 2 - heroCenter) * t;
   const scale    = 1 + (NAV_FONT_SIZE / heroFontSize - 1) * t;
+  const currentY = Math.max(NAV_HEIGHT / 2, heroFontSize * scale / 2) + 5 * (1 - t);
 
   heroLogoGroup.style.top       = `${currentY}px`;
+
   heroLogoGroup.style.transform = `translateX(-50%) translateY(-50%) scale(${scale})`;
 
   const isEditable = t < 0.3;
   const isNavMode  = t > 0.7;
+
+  heroCursorTip.classList.toggle('visible', isEditable);
 
   heroLogoGroup.classList.toggle('editable', isEditable);
   heroLogoGroup.classList.toggle('nav-mode',  isNavMode);
@@ -302,8 +409,31 @@ window.addEventListener('resize', () => {
 heroLogoGroup.addEventListener('click', () => {
   if (heroLogoGroup.classList.contains('nav-mode')) {
     if (state.open) setOverlay(false);
+    if (aboutOpen) setAboutOverlay(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+});
+
+// 커서 tip: 타이핑 영역 호버 시 마우스 따라다님
+document.addEventListener('mousemove', e => {
+  if (heroLogoGroup.classList.contains('editable')) {
+    heroCursorTip.style.left = `${e.clientX}px`;
+    heroCursorTip.style.top  = `${e.clientY}px`;
+    const over = document.elementFromPoint(e.clientX, e.clientY);
+    if (!heroLogoGroup.contains(over)) {
+      heroCursorTip.classList.remove('visible');
+    }
+  }
+});
+
+heroLogoGroup.addEventListener('mouseenter', () => {
+  if (heroLogoGroup.classList.contains('editable')) {
+    heroCursorTip.classList.add('visible');
+  }
+});
+
+heroLogoGroup.addEventListener('mouseleave', () => {
+  heroCursorTip.classList.remove('visible');
 });
 
 // 포커스: 커서 숨기고 텍스트 전체 선택
@@ -339,17 +469,47 @@ function shuffle(arr) {
   return a;
 }
 
-function createCard(project, delay) {
+function openWorksProject(project) {
+  state.cat = project.category;
+  state.type = 'all';
+  state.year = 'all';
+
+  document.querySelectorAll('.wtab').forEach(b => {
+    b.classList.toggle('active', b.dataset.cat === project.category);
+  });
+
+  const showSub = project.category === 'Fonts';
+  rowType.classList.toggle('hidden', !showSub);
+  rowYear.classList.toggle('hidden', !showSub);
+  if (!showSub) {
+    rowType.querySelectorAll('.wtab2').forEach(b => b.classList.remove('active'));
+    rowYear.querySelectorAll('.wtab3').forEach(b => b.classList.remove('active'));
+  }
+
+  setOverlay(true);
+
+  state.selected = project.id;
+  worksList.querySelectorAll('.works-item').forEach(el => {
+    el.classList.toggle('selected', el.dataset.id === project.id);
+  });
+  showDetail(project);
+  if (project.image) {
+    worksHoverImg.src = project.image;
+    worksHoverImg.classList.add('visible');
+  }
+}
+
+function createCard(project, delay, imageFirst = false) {
   const article = document.createElement('article');
   article.className = 'proj-card';
   article.style.transitionDelay = `${delay}s`;
-  article.innerHTML = `
-    <div class="proj-info">
+  const info = `<div class="proj-info">
       <p class="proj-subject">${project.name}</p>
       <p class="proj-desc">${project.description}</p>
-    </div>
-    <div class="proj-img"><img src="${project.image}" alt="${project.name}"></div>
-  `;
+    </div>`;
+  const img = `<div class="proj-img"><img src="${project.image}" alt="${project.name}"></div>`;
+  article.innerHTML = imageFirst ? img + info : info + img;
+  article.addEventListener('click', () => openWorksProject(project));
   return article;
 }
 
@@ -364,7 +524,7 @@ function createCard(project, delay) {
     const col   = i % 2 === 0 ? colLeft : colRight;
     const row   = Math.floor(i / 2);
     const delay = row * 0.08 + (i % 2) * 0.1;
-    col.appendChild(createCard(project, delay));
+    col.appendChild(createCard(project, delay, false));
   });
 
   // Scroll-triggered float-up animation
@@ -379,3 +539,5 @@ function createCard(project, delay) {
 
   document.querySelectorAll('.proj-card').forEach(card => observer.observe(card));
 })();
+
+updateLogo();

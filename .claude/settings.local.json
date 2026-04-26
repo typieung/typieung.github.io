@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(open /Users/yoobin/Desktop/Portfolio/index.html)"
+      "Bash(open /Users/yoobin/Desktop/Portfolio/index.html)",
+      "Bash(sips -s format png \"/Users/yoobin/Desktop/Portfolio/Image/Contact/namecard_2.pdf\" --out \"/Users/yoobin/Desktop/Portfolio/Image/Contact/namecard.png\")",
+      "Bash(convert --version)",
+      "Bash(sips -g pixelWidth -g pixelHeight /Users/yoobin/Desktop/Portfolio/Image/Contact/손.png)"
     ]
   }
 }
